@@ -6,18 +6,13 @@ It allows for creating, updating, and deleting pet details,
 including attributes like name, description, and images.
  */
 
-
 const mongoose = require('mongoose');
-const User = require('./users');
 
 const PetSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true
     },
-    images: [{
-        type: String
-    }],
     age: {
         type: Number,
         required: true
@@ -51,49 +46,40 @@ const PetSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
-    }
+    },
+    photos: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Photo'
+    }]
 });
 
-//return all the pets that lost
+// Static methods
 PetSchema.statics.findLostPets = async function() {
     return this.find({ isLost: true });
 };
 
-//return all owner's pets
 PetSchema.statics.findPetsByOwnerEmail = async function(ownerEmail) {
-    // find the user by his mail
-    const owner = await User.findOne({ email: ownerEmail });
+    const owner = await mongoose.model('User').findOne({ email: ownerEmail });
     if (!owner) {
         throw new Error('Owner not found');
     }
-
-    // return all the pets that belong to this owner
     return this.find({ owner: owner._id });
 };
 
-//delete pet by his id
-PetSchema.statics.deletePet  = async function(petId, ownerId) {
+PetSchema.statics.deletePet = async function(petId, ownerId) {
     try {
-        //check if the pet is belong to this owner
         const pet = await this.findOne({ _id: petId, owner: ownerId });
-
         if (!pet) {
-            // pet not fount OR pet don't belong to this owner
-            return { success: false, message: 'error - there is no pet or permition to delete' };
+            return { success: false, message: 'Error - no pet or permission to delete' };
         }
-
-        // delete the pet from DB
         await this.deleteOne({ _id: petId });
-
-        // update owner's list of pets
-        await User.updateOne({ _id: ownerId }, { $pull: { pets: petId } });
-
-        return { success: true, message: 'pet delete' };
+        await mongoose.model('User').updateOne({ _id: ownerId }, { $pull: { pets: petId } });
+        return { success: true, message: 'Pet deleted' };
     } catch (error) {
         console.error(error);
-        return { success: false, message: 'error' };
+        return { success: false, message: 'Error' };
     }
-}
+};
 
 PetSchema.statics.updateLostStatus = async function(petId, isLost) {
     try {
@@ -101,14 +87,13 @@ PetSchema.statics.updateLostStatus = async function(petId, isLost) {
         if (!pet) {
             return { success: false, message: 'Pet not found' };
         }
-
         pet.isLost = isLost;
         await pet.save();
-
         return { success: true, message: 'Pet lost status updated successfully' };
     } catch (error) {
         console.error(error);
         return { success: false, message: 'Internal server error' };
     }
 };
+
 module.exports = mongoose.model('Pet', PetSchema);

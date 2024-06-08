@@ -1,21 +1,46 @@
 const { Storage } = require('@google-cloud/storage');
 const path = require('path');
 
-// create storage object
 const storage = new Storage({
-    projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-    keyFilename: path.join(__dirname, '../', process.env.GOOGLE_CLOUD_KEYFILE),
+    keyFilename: path.join(__dirname, '../resources/petfinderapp-424309-724fe6560661.json'),
+    projectId: process.env.GCLOUD_PROJECT_ID,
 });
 
-const bucketName = 'your-bucket-name'; // need to change to our bucket
+const bucketName = process.env.GCLOUD_BUCKET;
 
-const uploadFile = async (filePath, destination) => {
-    await storage.bucket(bucketName).upload(filePath, {
-        destination,
+async function uploadFile(file, objectId) {
+    const bucket = storage.bucket(bucketName);
+    const blob = bucket.file(`${objectId}-${file.originalname}`);
+    const blobStream = blob.createWriteStream({
+        resumable: false,
     });
-    console.log(`${filePath} uploaded to ${bucketName}`);
-};
+
+    return new Promise((resolve, reject) => {
+        blobStream.on('finish', () => {
+            resolve({
+                url: `https://storage.googleapis.com/${bucket.name}/${blob.name}`
+            });
+        }).on('error', (err) => {
+            reject(err);
+        }).end(file.buffer);
+    });
+}
+
+async function getFileStream(filename) {
+    const bucket = storage.bucket(bucketName);
+    const file = bucket.file(filename);
+    return file.createReadStream();
+}
+
+async function deleteFile(fileName) {
+    const bucket = storage.bucket(bucketName);
+    await bucket.file(fileName).delete();
+}
+
 
 module.exports = {
     uploadFile,
+    getFileStream,
+    deleteFile
 };
+
