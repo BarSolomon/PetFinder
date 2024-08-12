@@ -50,7 +50,11 @@ const PetSchema = new mongoose.Schema({
     photos: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Photo'
-    }]
+    }],
+    features: {
+        type: Array,
+        default: []
+    } // New field for key-value pairs
 });
 
 // Static methods

@@ -8,6 +8,14 @@ const { initGridFS } = require('./config/gridfs');
 const photoRoutes = require('./routes/photoRoutes');
 const petRoutes = require('./routes/petRoutes');
 const userRoutes = require('./routes/userRoutes');
+const gptRoutes = require('./routes/gptRoutes');
+const { OpenAI } = require('openai');
+const { testGPTConnection } = require('./services/gptService');
+const authRoutes = require('./routes/auth');
+
+
+
+
 
 dotenv.config();
 const app = express();
@@ -18,6 +26,9 @@ const PORT = process.env.PORT || 3000;
 
 connectDB().then((db) => {
     initGridFS(db);
+    testGPTConnection();
+
+
 });
 
 // Middleware
@@ -26,6 +37,8 @@ app.use(session({
     resave: false,
     saveUninitialized: false
 }));
+
+app.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -35,10 +48,14 @@ require('./config/passportConfig');
 app.use('/api/photos', photoRoutes);
 app.use('/api/pets', petRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/gpt', gptRoutes);
+app.use('/api/auth', authRoutes);
+
+
 
 // Base route
 app.get('/', (req, res) => {
-    res.send('starting the server');
+    res.send('You have registered successfully ');
 });
 
 app.listen(PORT, () => {

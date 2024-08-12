@@ -1,0 +1,8 @@
+[33mc5b6381[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mJWT[m[33m, [m[1;32mmain[m[33m)[m 12/08
+[33m6a82f8b[m 12/08
+[33m150687c[m adding gpt intergrateions
+[33mda801ee[m adding gpt intergrateions
+[33m6869a11[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m  update with gpt
+[33m210d7a4[m Adding Upload photos feature Storeing at Google cloud storage creating arrays for photos each pet creating collection for photos saving the references in mongodb under pets and collections refactoring the code with MVC design Creating Fully collection for postman to check Api
+[33m0977397[m Add main project files
+[33m748dc39[m first commit

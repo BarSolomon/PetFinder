@@ -141,7 +141,7 @@ const deletePhoto = async (req, res) => {
         await pet.save();
 
         // Delete photo document from MongoDB
-        await photo.remove();
+        await Photo.deleteOne({ _id: photoId });
 
         res.status(200).json({ message: 'Photo deleted successfully' });
     } catch (error) {

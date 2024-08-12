@@ -37,10 +37,22 @@ async function deleteFile(fileName) {
     await bucket.file(fileName).delete();
 }
 
+async function generateSignedUrl(filename) {
+    const bucket = storage.bucket(bucketName);
+    const file = bucket.file(filename);
+
+    const [url] = await file.getSignedUrl({
+        version: 'v4',
+        action: 'read',
+        expires: Date.now() + 1000 * 60 * 60, // 1 hour
+    });
+
+    return url;
+}
 
 module.exports = {
     uploadFile,
     getFileStream,
-    deleteFile
+    deleteFile,
+    generateSignedUrl,
 };
-

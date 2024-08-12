@@ -51,18 +51,45 @@ const updatePet = async (req, res) => {
 };
 
 const deletePet = async (req, res) => {
+    const { petId, ownerId } = req.body;
+
     try {
-        const { petId, ownerId } = req.body;
-
-        const result = await Pet.deletePet(petId, ownerId);
-
-        if (!result.success) {
-            return res.status(400).json({ error: result.message });
+        const pet = await Pet.findOne({ _id: petId, owner: ownerId });
+        if (!pet) {
+            return res.status(404).json({ error: 'Pet not found or permission denied' });
         }
 
-        res.status(200).json({ message: result.message });
+        // Iterate over the photos array in the pet document
+        for (const photoId of pet.photos) {
+            try {
+                const photo = await Photo.findById(photoId);
+                if (photo) {
+                    try {
+                        await deleteFile(photo.filename); // Delete from Google Cloud Storage
+                    } catch (err) {
+                        console.error(`Failed to delete photo from GCS: ${err}`);
+                    }
+                }
+                try {
+                    await Photo.deleteOne({ _id: photoId }); // Delete photo document from MongoDB
+                } catch (err) {
+                    console.error(`Failed to delete photo document from MongoDB: ${err}`);
+                }
+            } catch (err) {
+                console.error(`Failed to find photo by ID: ${err}`);
+            }
+        }
+
+        // Delete the pet document from MongoDB
+        try {
+            await Pet.deleteOne({ _id: petId });
+        } catch (err) {
+            console.error(`Failed to delete pet document from MongoDB: ${err}`);
+        }
+
+        res.status(200).json({ message: 'Pet and all associated photos deleted successfully' });
     } catch (error) {
-        console.error('Delete pet error:', error);
+        console.error('Delete error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
