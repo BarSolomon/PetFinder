@@ -1,12 +1,14 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+console.log(GoogleStrategy);
+
 const User = require('../models/users'); // Adjust the path if necessary
 const jwt = require('jsonwebtoken');  // Import jsonwebtoken for JWT creation
 
 passport.use(new GoogleStrategy({
     clientID: process.env.CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET,
-    callbackURL: 'http://localhost:3000/api/users/auth/google',
+    callbackURL: 'http://localhost:8080/api/users/auth/google',  // Updated port to 8080
     scope: ['profile', 'email']
 }, async (accessToken, refreshToken, profile, done) => {
     try {

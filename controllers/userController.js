@@ -1,26 +1,28 @@
 const User = require('../models/users');
 const { OAuth2Client } = require('google-auth-library');
-const client = new OAuth2Client(process.env.CLIENT_ID);
 const jwt = require('jsonwebtoken');
+
+// Initialize the Google OAuth2 client with your Google client ID
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Verifies the Google token and retrieves the user's Google profile
 const verifyGoogleToken = async (token) => {
     const ticket = await client.verifyIdToken({
         idToken: token,
-        audience: process.env.CLIENT_ID,
+        audience: process.env.GOOGLE_CLIENT_ID, // Ensure this matches your Google client ID
     });
     return ticket.getPayload();
 };
 
 // Generates a session JWT
 const generateSessionToken = (user) => {
-    const payload = { id: user.id };
-    return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
+    const payload = { id: user._id };
+    return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' }); // Extended to 1 hour
 };
 
 // Generates a refresh JWT
 const generateRefreshToken = (user) => {
-    const payload = { id: user.id };
+    const payload = { id: user._id };
     return jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 };
 
@@ -28,26 +30,32 @@ const generateRefreshToken = (user) => {
 const googleAuthMobile = async (req, res) => {
     const { idToken } = req.body;
     try {
+        // Verify the ID token using the Google API
         const payload = await verifyGoogleToken(idToken);
-        const email = payload.email;
-        const firstName = payload.given_name;
-        const lastName = payload.family_name;
 
+        const { email, sub: googleId, given_name: firstName, family_name: lastName } = payload;
+
+        // Find or create the user in the database
         let user = await User.findOne({ email });
 
         if (!user) {
             user = new User({
-                googleId: payload.sub,
+                googleId,
                 email,
                 firstName,
-                lastName
+                lastName,
+                phone: '', // Default phone to empty string
+                city: '',  // Default city to empty string
+                pets: []   // Initialize pets as an empty array
             });
-            await user.save();
+            await user.save(); // Save the new user to the database
         }
 
+        // Generate JWT tokens for the session
         const sessionToken = generateSessionToken(user);
         const refreshToken = generateRefreshToken(user);
 
+        // Send the JWT tokens and user data back to the client
         res.json({ token: sessionToken, refreshToken, user });
     } catch (err) {
         console.error('Google mobile authentication error:', err);

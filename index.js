@@ -22,7 +22,7 @@ const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 connectDB().then((db) => {
     initGridFS(db);
