@@ -1,7 +1,7 @@
 const User = require('../models/users');
 const { OAuth2Client } = require('google-auth-library');
-const jwt = require('jsonwebtoken');
 const client = new OAuth2Client(process.env.CLIENT_ID);
+const jwt = require('jsonwebtoken');
 
 // Verifies the Google token and retrieves the user's Google profile
 const verifyGoogleToken = async (token) => {

@@ -11,6 +11,9 @@ const uploadPhotos = async (req, res) => {
         if (!pet) {
             return res.status(404).json({ error: 'Pet not found' });
         }
+        if (pet.photos.length >= 10) {
+            return res.status(400).json({ error: 'Maximum number of photos (10) reached' });
+        }
 
         const files = req.files;
         const photos = [];

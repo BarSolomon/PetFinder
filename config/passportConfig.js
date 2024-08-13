@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');  // Import jsonwebtoken for JWT creation
 passport.use(new GoogleStrategy({
     clientID: process.env.CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET,
-    callbackURL: 'http://localhost:3000/api/users/auth/google/callback',
+    callbackURL: 'http://localhost:3000/api/users/auth/google',
     scope: ['profile', 'email']
 }, async (accessToken, refreshToken, profile, done) => {
     try {

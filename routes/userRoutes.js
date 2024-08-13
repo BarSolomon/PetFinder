@@ -18,6 +18,8 @@ router.get('/auth/google/callback', passport.authenticate('google', { failureRed
 
 // Endpoint for mobile authentication (where the mobile app sends the Google ID token)
 router.post('/auth/google/mobile', googleAuthMobile);
+router.get('/auth/google/mobile', googleAuthMobile);
+
 
 // Endpoint for updating the user's phone number
 router.post('/update_phone', updateUserPhone);
