@@ -1,5 +1,0 @@
-# Ignore the .env file
-.env
-
-# Ignore the resources folder and all its contents
-resources/

@@ -22,7 +22,7 @@ const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 
 connectDB().then((db) => {
     initGridFS(db);
@@ -42,7 +42,6 @@ app.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
 app.use(passport.initialize());
 app.use(passport.session());
 
-require('./config/passportConfig');
 
 // Route Middleware
 app.use('/api/photos', photoRoutes);
