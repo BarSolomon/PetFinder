@@ -1,5 +1,6 @@
 const Pet = require('../models/pets');
 const User = require('../models/users');
+const mongoose = require("mongoose");
 
 const createPet = async (req, res) => {
     try {
@@ -121,11 +122,23 @@ const updateLostStatus = async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+const getPetsByUserId = async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const objectId = new mongoose.Types.ObjectId(userId); // שימוש ב-'new' ליצירת ObjectId
+        const pets = await Pet.find({ owner: objectId });
+
+        res.status(200).json(pets);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
 
 module.exports = {
     createPet,
     updatePet,
     deletePet,
     getLostPets,
-    updateLostStatus
+    updateLostStatus,
+    getPetsByUserId
 };

@@ -158,5 +158,6 @@ module.exports = {
     getPhotosByPetId,
     downloadPhoto,
     downloadAllPhotosByPetId,
-    deletePhoto
+    deletePhoto,
+
 };
