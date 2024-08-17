@@ -174,7 +174,7 @@ const generatePhotoUrlsByPetId = async (req, res) => {
             return res.status(404).json({ error: 'No photos found for this pet' });
         }
 
-        res.status(200).json({ signedUrls }); // Respond with the signed URLs
+        return res.status(200).json({ image_urls: signedUrls });// Respond with the signed URLs
     } catch (error) {
         console.error('Error generating signed URLs:', error);
         res.status(500).json({ error: 'Internal server error' });
