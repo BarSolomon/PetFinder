@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Photo = require('../models/photo');
 const Pet = require('../models/pets');
-const { uploadFile, getFileStream,deleteFile  } = require('../services/googleCloudStorage');
+const { uploadFile, getFileStream,deleteFile,generateSignedUrls  } = require('../services/googleCloudStorage');
 // Upload photo for a pet
 const uploadPhotos = async (req, res) => {
     const { petId } = req.body;
@@ -153,11 +153,40 @@ const deletePhoto = async (req, res) => {
     }
 };
 
+
+const generatePhotoUrlsByPetId = async (req, res) => {
+    try {
+        const { petId } = req.params; // Get the petId from the request parameters
+        const pet = await Pet.findById(petId).populate('photos');
+
+        if (!pet) {
+            return res.status(404).json({ error: 'Pet not found' });
+        }
+
+        const filenames = []; // Initialize an array to hold the filenames
+        for (const photo of pet.photos) { // Loop through each photo in the pet's photos
+            filenames.push(photo.filename); // Add the filename to the array
+        }
+
+        const signedUrls = await generateSignedUrls(filenames); // Generate signed URLs for all filenames
+
+        if (!signedUrls || signedUrls.length === 0) {
+            return res.status(404).json({ error: 'No photos found for this pet' });
+        }
+
+        res.status(200).json({ signedUrls }); // Respond with the signed URLs
+    } catch (error) {
+        console.error('Error generating signed URLs:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
 module.exports = {
     uploadPhotos,
     getPhotosByPetId,
     downloadPhoto,
     downloadAllPhotosByPetId,
     deletePhoto,
+    generatePhotoUrlsByPetId
 
 };

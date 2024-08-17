@@ -49,10 +49,23 @@ async function generateSignedUrl(filename) {
 
     return url;
 }
+/* GenerateSingedfor all file names.
+* */
+async function generateSignedUrls(filenames) {
+    const signedUrls = [];
+
+    for (const filename of filenames) {
+        const url = await generateSignedUrl(filename);
+        signedUrls.push(url);
+    }
+
+    return signedUrls;
+}
 
 module.exports = {
     uploadFile,
     getFileStream,
     deleteFile,
     generateSignedUrl,
+    generateSignedUrls
 };
