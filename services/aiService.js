@@ -1,10 +1,10 @@
 const axios = require('axios');
 const Pet = require('../models/pets');
 const BreedPrediction = require('../models/breedPrediction');
-const { generatePhotoUrlsByPetId } = require('../services/googleCloudStorage');
+const { generateSignedUrls } = require('../services/googleCloudStorage');
 
 async function classifyAndStoreBreeds(petId) {
-    const photoUrls = await generatePhotoUrlsByPetId(petId);
+    const photoUrls = await generateSignedUrls(petId);
 
     const response = await axios.post('http://Nameofserver:8080/best_classify', {
         image_urls: photoUrls
