@@ -1,5 +1,6 @@
 const Pet = require('../models/pets');
 const User = require('../models/users');
+const { classifyAndStoreBreeds } = require('../services/aiService');
 const mongoose = require("mongoose");
 
 const createPet = async (req, res) => {
@@ -134,11 +135,27 @@ const getPetsByUserId = async (req, res) => {
     }
 };
 
+const classifyPetBreeds = async (req, res) => {
+    const { petId } = req.params;
+
+    try {
+        const breedPrediction = await classifyAndStoreBreeds(petId);
+        res.status(200).json({
+            message: 'Breed predictions stored successfully',
+            breedPrediction
+        });
+    } catch (error) {
+        console.error('Error classifying breeds:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
 module.exports = {
     createPet,
     updatePet,
     deletePet,
     getLostPets,
     updateLostStatus,
-    getPetsByUserId
+    getPetsByUserId,
+    classifyPetBreeds
 };

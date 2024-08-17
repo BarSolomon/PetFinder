@@ -51,10 +51,15 @@ const PetSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Photo'
     }],
+    breeds_predictions: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'BreedPrediction'
+    },
     features: {
         type: Array,
         default: []
     } // New field for key-value pairs
+
 });
 
 // Static methods
