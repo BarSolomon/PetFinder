@@ -34,6 +34,20 @@ const createPet = async (req, res) => {
     }
 };
 
+const getPetData = async(req, res) =>{
+    try {
+        const {petId} = req.body
+        const pet = await Pet.findPetByPetID(petId);
+        if (!pet){
+            return res.status(404).json({erorr: 'pet not found'})
+    }
+        res.status(200).json(pet);
+    }catch (error) {
+        console.error('Pet not found:', error);
+        res.status(500).json({error: 'Internal server error'})
+    }
+};
+
 const updatePet = async (req, res) => {
     try {
         const { petId } = req.params;
@@ -157,5 +171,6 @@ module.exports = {
     getLostPets,
     updateLostStatus,
     getPetsByUserId,
-    classifyPetBreeds
+    classifyPetBreeds,
+    getPetData
 };

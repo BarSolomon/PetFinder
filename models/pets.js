@@ -75,6 +75,14 @@ PetSchema.statics.findPetsByOwnerEmail = async function(ownerEmail) {
     return this.find({ owner: owner._id });
 };
 
+PetSchema.statics.findPetByPetID = async function(petId) {
+    const pet = await this.findOne({_id: petId})
+    if (!pet) {
+        throw new Error('no pet found');
+    }
+    return this.find({_id: petId });
+};
+
 PetSchema.statics.deletePet = async function(petId, ownerId) {
     try {
         const pet = await this.findOne({ _id: petId, owner: ownerId });
