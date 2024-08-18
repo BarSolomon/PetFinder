@@ -1,6 +1,6 @@
 const axios = require('axios');
 const Pet = require('../models/pets');
-const BreedPrediction = require('../models/breedPrediction');
+const BreedPrediction = require('../models/BreedPrediction');
 const { generateSignedUrls } = require('../services/googleCloudStorage');
 
 async function classifyAndStoreBreeds(petId) {

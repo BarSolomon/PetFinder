@@ -35,6 +35,7 @@ const createPet = async (req, res) => {
 };
 
 const getPetData = async(req, res) =>{
+    console.log(req.body);
     try {
         const {petId} = req.body
         const pet = await Pet.findPetByPetID(petId);
