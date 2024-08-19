@@ -2,6 +2,8 @@ const Pet = require('../models/pets');
 const User = require('../models/users');
 const { classifyAndStoreBreeds } = require('../services/aiService');
 const mongoose = require("mongoose");
+const BreedPrediction = require('../models/BreedPrediction');
+
 
 const createPet = async (req, res) => {
     try {
@@ -165,6 +167,33 @@ const classifyPetBreeds = async (req, res) => {
     }
 };
 
+
+const getBreedPrediction = async (req, res) => {
+    const { petId, breedPredictionId } = req.query;
+
+    try {
+        let breedPrediction;
+
+        if (breedPredictionId) {
+            // If breedPredictionId is provided, fetch the breed prediction directly
+            breedPrediction = await BreedPrediction.findById(breedPredictionId);
+        } else if (petId) {
+            // If petId is provided, fetch the pet and then retrieve the breed prediction using the reference
+            const pet = await Pet.findById(petId).populate('breeds_predictions');
+            breedPrediction = pet.breeds_predictions;
+        }
+
+        if (!breedPrediction) {
+            return res.status(404).json({ error: 'Breed prediction not found' });
+        }
+
+        res.status(200).json(breedPrediction);
+    } catch (error) {
+        console.error('Error retrieving breed prediction:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
 module.exports = {
     createPet,
     updatePet,
@@ -173,5 +202,6 @@ module.exports = {
     updateLostStatus,
     getPetsByUserId,
     classifyPetBreeds,
-    getPetData
+    getPetData,
+    getBreedPrediction
 };
