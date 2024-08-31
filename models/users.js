@@ -1,19 +1,6 @@
-/*
-מחלקה זו מייצגת משתמש במערכת.
- היא מאפשרת יצירה, עדכון ומחיקה של פרטי משתמש, כולל ניהול הרשאות וסיסמה.
-Represents a user in the system.
-It allows for creating, updating, and deleting user details,
-including managing permissions and passwords.
- */
-
-
 const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
-    googleId: {
-        type: String,
-        required: true
-    },
     email: {
         type: String,
         required: true,
@@ -27,20 +14,21 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    password: {
+        type: String,
+        required: true
+    },
     phone: {
         type: String,
-        default: '',
-        required: false
+        default: ''
     },
     city: {
         type: String,
-        default: '',
-        required: false
+        required: true
     },
     pets: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Pet'
+        ref: 'Pet'  // Reference to the Pet model
     }]
 });
-
 module.exports = mongoose.model('User', UserSchema);

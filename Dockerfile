@@ -1,5 +1,5 @@
 # Step 1: Specify the base image
-FROM node:16
+FROM node:18
 
 # Step 2: Set the working directory in the container
 WORKDIR /app

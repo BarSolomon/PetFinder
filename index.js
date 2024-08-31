@@ -10,8 +10,9 @@ const petRoutes = require('./routes/petRoutes');
 const userRoutes = require('./routes/userRoutes');
 const gptRoutes = require('./routes/gptRoutes');
 const { OpenAI } = require('openai');
+
 const { testGPTConnection } = require('./services/gptService');
-const authRoutes = require('./routes/auth');
+const authRoutes = require('./routes/authRoutes');
 
 
 
@@ -48,7 +49,7 @@ app.use('/api/photos', photoRoutes);
 app.use('/api/pets', petRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/gpt', gptRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
 
 
 
