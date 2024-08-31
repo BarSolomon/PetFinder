@@ -1,5 +1,5 @@
 const { analyzePhoto , processPetPhotos  } = require('../services/gptService');
-const GPTInteraction = require('../models/GPTInteraction'); // Import the GPTInteraction model
+const GPTInteraction = require('../models/gptInteraction'); // Import the GPTInteraction model
 const Pet = require('../models/pets'); // Import the Pet model
 const Photo = require('../models/photo'); // Import the Photo model
 
