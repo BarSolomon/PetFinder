@@ -58,7 +58,12 @@ const PetSchema = new mongoose.Schema({
     features: {
         type: Array,
         default: []
-    } // New field for key-value pairs
+    }, // New field for key-value pairs
+
+    lostAd: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'GPTInteraction'
+    }
 
 });
 
