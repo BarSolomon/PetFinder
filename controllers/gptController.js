@@ -69,7 +69,35 @@ const getGPTInteractionById = async (req, res) => {
     }
 };
 
+const updateInteractionResponse = async (req, res) => {
+    const { id } = req.params; // Extract the interaction ID from the URL
+    const { response } = req.body; // Extract the new response from the request body
 
+    if (!response) {
+        return res.status(400).json({ error: 'Response is required.' });
+    }
+
+    try {
+        // Find the GPT interaction by ID and update the response field only
+        const updatedInteraction = await GPTInteraction.findByIdAndUpdate(
+            id,
+            { response }, // Only updating the 'response' field
+            { new: true, runValidators: true } // Return the updated document and run validators
+        );
+
+        if (!updatedInteraction) {
+            return res.status(404).json({ error: 'Interaction not found' });
+        }
+
+        res.status(200).json({
+            message: 'Interaction response updated successfully',
+            updatedInteraction
+        });
+    } catch (error) {
+        console.error('Error updating interaction response:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
 
 
 const analyzePetPhotos = async (req, res) => {
@@ -84,4 +112,4 @@ const analyzePetPhotos = async (req, res) => {
     }
 };
 
-module.exports = { analyzePhotoEndpoint ,analyzePetPhotos,getGPTInteractionById };
+module.exports = { analyzePhotoEndpoint ,analyzePetPhotos,getGPTInteractionById,updateInteractionResponse };
