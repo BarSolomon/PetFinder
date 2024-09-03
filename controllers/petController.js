@@ -3,7 +3,9 @@ const User = require('../models/users');
 const { classifyAndStoreBreeds } = require('../services/aiService');
 const mongoose = require("mongoose");
 const BreedPrediction = require('../models/BreedPrediction');
-
+const Photo = require('../models/photo');
+const GPTInteraction = require('../models/gptInteraction');
+const { deleteFile } = require('../services/googleCloudStorage');
 
 const createPet = async (req, res) => {
     try {
@@ -99,6 +101,31 @@ const deletePet = async (req, res) => {
             }
         }
 
+        // Delete breed predictions if they exist
+        if (pet.breeds_predictions) {
+            try {
+                await BreedPrediction.deleteOne({ _id: pet.breeds_predictions });
+            } catch (err) {
+                console.error(`Failed to delete breed predictions: ${err}`);
+            }
+        }
+
+        // Delete LostAD if it exists
+        if (pet.lostAd) {
+            try {
+                await GPTInteraction.deleteOne({ _id: pet.lostAd });
+            } catch (err) {
+                console.error(`Failed to delete LostAD: ${err}`);
+            }
+        }
+
+        // Remove pet reference from user's pets array
+        try {
+            await User.updateOne({ _id: ownerId }, { $pull: { pets: petId } });
+        } catch (err) {
+            console.error(`Failed to remove pet reference from user: ${err}`);
+        }
+
         // Delete the pet document from MongoDB
         try {
             await Pet.deleteOne({ _id: petId });
@@ -106,12 +133,14 @@ const deletePet = async (req, res) => {
             console.error(`Failed to delete pet document from MongoDB: ${err}`);
         }
 
-        res.status(200).json({ message: 'Pet and all associated photos deleted successfully' });
+        res.status(200).json({ message: 'Pet and all associated data deleted successfully' });
     } catch (error) {
         console.error('Delete error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+
+
 
 const getLostPets = async (req, res) => {
     try {
@@ -183,8 +212,16 @@ const getBreedPrediction = async (req, res) => {
             breedPrediction = pet.breeds_predictions;
         }
 
-        if (!breedPrediction) {
-            return res.status(404).json({ error: 'Breed prediction not found' });
+        // If breed prediction is not found or the predictions array is null, classify and store breeds
+        if (!breedPrediction || (breedPrediction && (!breedPrediction.predictions || breedPrediction.predictions.length === 0))) {
+            console.log('Predictions not found or empty. Classifying and storing breeds...');
+
+            // Call the classifyAndStoreBreeds function to get new predictions
+            breedPrediction = await classifyAndStoreBreeds(petId);
+
+            if (!breedPrediction) {
+                return res.status(404).json({ error: 'Breed prediction could not be generated.' });
+            }
         }
 
         res.status(200).json(breedPrediction);
