@@ -128,3 +128,50 @@ exports.loginUser = [loginLimiter, async (req, res) => {
         res.status(500).json({ message: 'Server error during login.' });
     }
 }];
+
+
+
+exports.updateUser = async (req, res) => {
+    const { userId } = req.params;
+    const { email, firstName, lastName, password, phone, city } = req.body;
+
+    try {
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+        // Update fields only if they are provided in the request
+        if (email) {
+            if (!validator.isEmail(email)) {
+                return res.status(400).json({ message: 'Invalid email format.' });
+            }
+            user.email = email;
+        }
+        if (firstName) user.firstName = firstName;
+        if (lastName) user.lastName = lastName;
+        if (password) {
+            // Hash the new password
+            const hashedPassword = await bcrypt.hash(password, 10);
+            user.password = hashedPassword;
+        }
+        if (phone !== undefined) user.phone = phone;
+        if (city) user.city = city;
+
+        await user.save();
+
+        res.status(200).json({
+            message: 'User updated successfully.',
+            userInfo: {
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                phone: user.phone,
+                city: user.city
+            }
+        });
+    } catch (error) {
+        console.error('Update user error:', error);
+        res.status(500).json({ message: 'Server error during user update.' });
+    }
+};
