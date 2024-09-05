@@ -53,24 +53,32 @@ const analyzePhotoEndpoint = async (req, res) => {
 
 
 const getGPTInteractionById = async (req, res) => {
-    const { interactionId } = req.params;
+    const { interactionId, petId } = req.query;
 
     try {
-        const interaction = await GPTInteraction.findById(interactionId);
+        let interaction;
+        if (interactionId) {
+            // Fetch by interactionId
+            interaction = await GPTInteraction.findById(interactionId);
+        } else if (petId) {
+            // Fetch by petId
+            const pet = await Pet.findById(petId).populate('lostAd');
+            interaction = pet ? pet.lostAd : null;
+        }
 
         if (!interaction) {
-            return res.status(404).json({ message: 'GPT interaction not found' });
+            return res.status(404).json({ error: 'Interaction not found' });
         }
 
         res.status(200).json(interaction);
     } catch (error) {
-        console.error('Error fetching GPT interaction:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        console.error('Error retrieving interaction:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
 
 const updateInteractionResponse = async (req, res) => {
-    const { id } = req.params; // Extract the interaction ID from the URL
+    const { id, petId } = req.query; // Extract interaction ID or pet ID from the query parameters
     const { response } = req.body; // Extract the new response from the request body
 
     if (!response) {
@@ -78,12 +86,28 @@ const updateInteractionResponse = async (req, res) => {
     }
 
     try {
-        // Find the GPT interaction by ID and update the response field only
-        const updatedInteraction = await GPTInteraction.findByIdAndUpdate(
-            id,
-            { response }, // Only updating the 'response' field
-            { new: true, runValidators: true } // Return the updated document and run validators
-        );
+        let updatedInteraction;
+
+        if (id) {
+            // If interactionId is provided, update by interaction ID
+            updatedInteraction = await GPTInteraction.findByIdAndUpdate(
+                id,
+                { response }, // Only updating the 'response' field
+                { new: true, runValidators: true } // Return the updated document and run validators
+            );
+        } else if (petId) {
+            // If petId is provided, find the interaction by petId first
+            const pet = await Pet.findById(petId).populate('lostAd');
+            const interaction = pet ? pet.lostAd : null;
+
+            if (interaction) {
+                updatedInteraction = await GPTInteraction.findByIdAndUpdate(
+                    interaction._id,
+                    { response }, // Only updating the 'response' field
+                    { new: true, runValidators: true } // Return the updated document and run validators
+                );
+            }
+        }
 
         if (!updatedInteraction) {
             return res.status(404).json({ error: 'Interaction not found' });
@@ -98,6 +122,7 @@ const updateInteractionResponse = async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+
 
 
 const analyzePetPhotos = async (req, res) => {

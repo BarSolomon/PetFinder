@@ -5,8 +5,8 @@ const router = express.Router();
 
 router.post('/analyze', analyzePhotoEndpoint);
 router.post('/analyzePetPhotos', analyzePetPhotos);
-router.get('/interaction/:interactionId', getGPTInteractionById);
-router.put('/interaction/:id', updateInteractionResponse);
+router.get('/interaction/', getGPTInteractionById);
+router.put('/interaction/', updateInteractionResponse);
 
 
 
