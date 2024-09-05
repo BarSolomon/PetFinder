@@ -63,6 +63,20 @@ const PetSchema = new mongoose.Schema({
     lostAd: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'GPTInteraction'
+    },
+
+
+    // New field to store geolocation coordinates
+    location: { // New field for storing geographic coordinates
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point'
+        },
+        coordinates: {
+            type: [Number], // [longitude, latitude]
+            index: '2dsphere' // Enables geospatial queries
+        }
     }
 
 });

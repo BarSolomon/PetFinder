@@ -6,14 +6,31 @@ const BreedPrediction = require('../models/BreedPrediction');
 const Photo = require('../models/photo');
 const GPTInteraction = require('../models/gptInteraction');
 const { deleteFile } = require('../services/googleCloudStorage');
+const { getCoordinates } = require('../services/geolocationService');
+
+
 
 const createPet = async (req, res) => {
     try {
-        const { name, age, breed, type, gender, description, city, ownerEmail } = req.body;
+        const { name, age, breed, type, gender, description, city, fullAddress, ownerEmail } = req.body;
 
         const owner = await User.findOne({ email: ownerEmail });
         if (!owner) {
             return res.status(404).json({ error: 'Owner not found' });
+        }
+
+        // Fetch coordinates for the full address
+        const coords = await getCoordinates(fullAddress);
+
+        console.log('Fetched coordinates:', coords);
+
+        // Ensure correct order: [longitude, latitude]
+        const coordinates = coords && coords.longitude !== undefined && coords.latitude !== undefined
+            ? [coords.longitude, coords.latitude] // Correct order
+            : null;
+
+        if (!coordinates) {
+            return res.status(400).json({ error: 'Invalid address or unable to fetch coordinates.' });
         }
 
         const pet = new Pet({
@@ -24,6 +41,11 @@ const createPet = async (req, res) => {
             gender,
             description,
             city,
+            fullAddress,
+            location: {  // Store as GeoJSON Point
+                type: 'Point',
+                coordinates
+            },
             owner: owner._id
         });
 
@@ -55,14 +77,53 @@ const getPetData = async(req, res) =>{
 
 const updatePet = async (req, res) => {
     try {
-        const { petId } = req.params;
-        const updateData = req.body;
+        const { petId } = req.params; // Extract pet ID from URL parameters
+        const updateData = req.body;  // Extract fields to update from request body
 
-        const pet = await Pet.findByIdAndUpdate(petId, updateData, { new: true });
+        // Fetch the pet document by ID
+        const pet = await Pet.findById(petId);
 
         if (!pet) {
             return res.status(404).json({ error: 'Pet not found' });
         }
+
+        // Check if fullAddress is being updated and fetch new coordinates
+        if (updateData.fullAddress) {
+            const coords = await getCoordinates(updateData.fullAddress);
+
+            console.log('Fetched coordinates for update:', coords);
+
+            // Ensure correct order: [longitude, latitude]
+            const coordinates = coords && coords.longitude !== undefined && coords.latitude !== undefined
+                ? [coords.longitude, coords.latitude] // Correct order
+                : null;
+
+            if (!coordinates) {
+                return res.status(400).json({ error: 'Invalid address or unable to fetch coordinates.' });
+            }
+
+            // Update the location field
+            pet.location = {
+                type: 'Point',
+                coordinates
+            };
+
+            pet.fullAddress = updateData.fullAddress; // Update full address
+        }
+
+        // Update only the provided fields in updateData
+        if (updateData.name) pet.name = updateData.name;
+        if (updateData.age) pet.age = updateData.age;
+        if (updateData.breed) pet.breed = updateData.breed;
+        if (updateData.type) pet.type = updateData.type;
+        if (updateData.gender) pet.gender = updateData.gender;
+        if (updateData.description) pet.description = updateData.description;
+        if (updateData.isLost !== undefined) pet.isLost = updateData.isLost;
+        if (updateData.city) pet.city = updateData.city;
+        if (updateData.owner) pet.owner = updateData.owner;
+
+        // Save the updated pet document
+        await pet.save();
 
         res.status(200).json({ message: 'Pet updated successfully', pet });
     } catch (error) {
@@ -70,6 +131,9 @@ const updatePet = async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+
+
+
 
 const deletePet = async (req, res) => {
     const { petId, ownerId } = req.body;
