@@ -31,6 +31,7 @@ const createPet = async (req, res) => {
 
         if (!coordinates) {
             return res.status(400).json({ error: 'Invalid address or unable to fetch coordinates.' });
+
         }
 
         const pet = new Pet({
