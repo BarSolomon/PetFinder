@@ -2,7 +2,6 @@ const axios = require('axios');
 const Pet = require('../models/pets');
 const BreedPrediction = require('../models/BreedPrediction');
 const { generateSignedUrls } = require('../services/googleCloudStorage');
-/// need to fix generateSignedURLS
 async function classifyAndStoreBreeds(petId) {
     try {
         // Find the pet by ID and populate the photos array

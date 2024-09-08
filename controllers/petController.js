@@ -335,8 +335,8 @@ const findMatch = async (req, res) => {
                         1. type: Either "Dog" or "Cat".
                         2. age: An approximate age from 0 to 20.
                         3. gender: Either "Female" or "Male".
-                        4. breed: Choose from the breed predictions provided or identify from the photo.
-                        5. description: A brief description of the pet's appearance or any distinctive features.
+                        4. breed: identifying your picture you will try to interpret what kind of dog it is Choose from confidence breed In addition, if there is more confidence than the rest, choose it
+                        5. description: A brief description of the pet's appearance or any distinctive features that unique for the dog(maximum 2 lines).
                         
                         Please provide the response in the following JSON format:
                         
@@ -361,7 +361,9 @@ const findMatch = async (req, res) => {
             console.log(`Analyzing photo ID: ${photo._id} for pet ID: ${petId}`);
             const analysis = await analyzePhoto(photo.filename, prompt);
             console.log(`Analysis result for photo ID: ${photo._id}:`, analysis);
-            const cleanedAnalysis = analysis.replace(/```json|```/g, '').trim();
+            const cleanedAnalysis = cleanJsonResponse(analysis);
+            console.log('cleaned analyse' ,cleanedAnalysis);
+
 
             // Store the GPT interaction
             const gptInteraction = new GPTInteraction({
@@ -372,7 +374,7 @@ const findMatch = async (req, res) => {
             });
             await gptInteraction.save();
             console.log(`Stored GPT interaction for photo ID: ${photo._id} in pet ID: ${petId}`);
-            const gptResponse = JSON.parse(cleanedAnalysis); // Parse cleaned response
+            const gptResponse = cleanedAnalysis; // Parse cleaned response
 
             // Update pet schema fields based on GPT response
             if (gptResponse.type) pet.type = gptResponse.type;
@@ -391,7 +393,7 @@ const findMatch = async (req, res) => {
         const nearbyPets = await findMatchingLostPets(petId, { isLost: true, breed: pet.breed });
         console.log(`Found ${nearbyPets.length} nearby pets matching criteria for pet ID: ${petId}`);
 
-        await storePetMatches(petId, nearbyPets);
+        const petMatchesid =  await storePetMatches(petId, nearbyPets);
         console.log(`Stored matches for pet ID: ${petId}`);
 
         // Step 4.3: Extract owner details for matched pets
@@ -425,7 +427,8 @@ const findMatch = async (req, res) => {
                         isPetMine: matchedPet.isPetMine,
                         breeds_predictions: matchedPet.breeds_predictions,
                     },
-                    owner: ownerDetails
+                    owner: ownerDetails ,
+                    PossibleMatch: petMatchesid
                 };
             })
         );
@@ -435,6 +438,26 @@ const findMatch = async (req, res) => {
     } catch (error) {
         console.error('Error finding match:', error);
         res.status(500).json({ error: 'Internal server error' });
+    }
+};
+const cleanJsonResponse = (response) => {
+    try {
+        // Remove code block delimiters and any text before/after the JSON
+        const cleaned = response.replace(/```json|```/g, '').trim();
+
+        // Extract only the JSON content from the string
+        const jsonMatch = cleaned.match(/{[\s\S]*}/);
+
+        if (jsonMatch) {
+            // Parse the JSON to ensure it's valid
+            const jsonResponse = JSON.parse(jsonMatch[0]);
+            return jsonResponse;
+        } else {
+            throw new Error("No valid JSON found in the response.");
+        }
+    } catch (error) {
+        console.error("Error cleaning JSON response:", error);
+        return null;  // Return null or handle the error as needed
     }
 };
 module.exports = {
