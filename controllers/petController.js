@@ -6,10 +6,12 @@ const BreedPrediction = require('../models/BreedPrediction');
 const Photo = require('../models/photo');
 const GPTInteraction = require('../models/gptInteraction');
 const { deleteFile } = require('../services/googleCloudStorage');
-const { getCoordinates } = require('../services/geolocationService');
+const { getCoordinates,getAddressFromCoordinates } = require('../services/geolocationService');
 const PossibleMatch = require('../models/possibleMatch');  // Assuming a new model for storing possible matches
 const { findMatchingLostPets, findNearbyPets, storePetMatches } = require('../services/petService');
 const { analyzePhoto } = require('../services/gptService');
+const { sendMatchNotification } = require('../services/emailService'); // Ensure correct import
+
 
 
 
@@ -390,7 +392,7 @@ const findMatch = async (req, res) => {
 
         // Step 4: Find nearby pets and store matches
         console.log(`Finding nearby pets for pet ID: ${petId}`);
-        const nearbyPets = await findMatchingLostPets(petId, { isLost: true, breed: pet.breed });
+        const nearbyPets = await findMatchingLostPets(petId, { isLost: true });
         console.log(`Found ${nearbyPets.length} nearby pets matching criteria for pet ID: ${petId}`);
 
         const petMatchesid =  await storePetMatches(petId, nearbyPets);
@@ -408,6 +410,21 @@ const findMatch = async (req, res) => {
                     phone: matchedPet.owner.phone,
                     email: matchedPet.owner.email
                 };
+
+                try {
+                    const petFounder = await Pet.findById(petId).populate('owner');
+                    const petLocation = pet.location;
+                    const fullAddress = await getAddressFromCoordinates(petLocation.coordinates[0],petLocation.coordinates[1]);
+                    console.log(`Converting cordinates ${petLocation.coordinates} Result : ${fullAddress} `);
+
+                    // Send the photos of the original pet instead of the matched pet
+                    await sendMatchNotification(ownerDetails, pet.photos.map(photo => photo.filename), matchedPet, petFounder.owner, fullAddress);
+                    console.log(`Email sent to owner (${ownerDetails.email}) about possible match for pet: ${matchedPet.name}`);
+                } catch (error) {
+                    console.error(`Failed to send email to ${ownerDetails.email}:`, error);
+                }
+
+
 
                 // Return matched pet details with minimal owner information
                 return {
@@ -432,6 +449,7 @@ const findMatch = async (req, res) => {
                 };
             })
         );
+
 
         console.log(`Match analysis complete for pet ID: ${petId}`);
         res.status(200).json({ message: 'Match analysis complete.', matches: matchedPetDetails });

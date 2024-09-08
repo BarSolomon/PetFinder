@@ -45,12 +45,6 @@ async function findMatchingLostPets(petId, filters = {}) {
             throw new Error('Pet not found');
         }
 
-        // Ensure the pet is marked as lost
-        /*
-        if (!pet.isLost) {
-            return { message: 'The pet is not marked as lost.' };
-        }*/
-
         // Ensure the pet has a valid location
         if (!pet.location || !pet.location.coordinates) {
             return { message: 'The pet does not have a valid location.' };
@@ -59,8 +53,15 @@ async function findMatchingLostPets(petId, filters = {}) {
         // Extract the coordinates
         const coordinates = pet.location.coordinates; // [longitude, latitude]
 
+        // Extract the breed from the pet
+        const petBreed = pet.breed;
+
         // Convert the pet's breed predictions to a Set for efficient lookup
-        const petBreedsSet = new Set(pet.breeds_predictions ? pet.breeds_predictions.predictions.map(prediction => prediction.breed) : []);
+        const petBreedsSet = new Set(
+            pet.breeds_predictions ? pet.breeds_predictions.predictions.map(prediction => prediction.breed) : []
+        );
+
+        console.log(`Pet ID ${petId} has ${petBreedsSet.size} breed predictions.`);
 
         // MongoDB Aggregation Pipeline
         const pipeline = [
@@ -68,11 +69,10 @@ async function findMatchingLostPets(petId, filters = {}) {
                 $geoNear: {
                     near: { type: 'Point', coordinates: coordinates },
                     distanceField: 'distance',
-                    maxDistance: 50 * 1000,  // 50 km in meters
+                    maxDistance: 50000,  // 50 km in meters
                     spherical: true,
                     query: {
                         _id: { $ne: new mongoose.Types.ObjectId(petId) }, // Exclude the pet itself
-                        isLost: true,  // Only lost pets
                         ...filters    // Apply any additional filters
                     }
                 }
@@ -93,18 +93,20 @@ async function findMatchingLostPets(petId, filters = {}) {
             },
             {
                 $addFields: {
-                    commonBreeds: {
-                        $filter: {
-                            input: '$breeds_predictions.predictions',
-                            as: 'prediction',
-                            cond: { $in: ['$$prediction.breed', Array.from(petBreedsSet)] }
+                    hasMatchingBreed: {
+                        $cond: {
+                            if: { $eq: ['$breed', petBreed] }, // Check if the pet's breed matches the input pet's breed
+                            then: true,
+                            else: {
+                                $in: [petBreed, '$breeds_predictions.predictions.breed'] // Check if any prediction matches the input pet's breed
+                            }
                         }
                     }
                 }
             },
             {
                 $match: {
-                    commonBreeds: { $ne: [] } // Only keep pets with common breeds
+                    hasMatchingBreed: true // Only keep pets with at least one matching breed
                 }
             },
             {
@@ -112,22 +114,42 @@ async function findMatchingLostPets(petId, filters = {}) {
                     name: 1,
                     breed: 1,
                     distance: 1,
-                    commonBreeds: 1,
-                    breeds_predictions: 1
+                    breeds_predictions: 1,
+                    location: 1, // Include location details for completeness
+                    owner: 1 // Include owner details for completeness
                 }
             }
         ];
 
-        // Execute the aggregation pipeline
-        const matchingLostPets = await Pet.aggregate(pipeline);
+        // Execute the aggregation pipeline with logging after each stage
+        console.log('Running geoNear to find nearby pets...');
+        let result = await Pet.aggregate([pipeline[0]]);
+        console.log(`Found ${result.length} pets within 50 km of the coordinates.`);
 
-        return matchingLostPets;
+        console.log('Looking up breed predictions for the nearby pets...');
+        result = await Pet.aggregate([pipeline[0], pipeline[1]]);
+        console.log(`Breed predictions lookup completed for ${result.length} pets.`);
+
+        console.log('Unwinding breed predictions...');
+        result = await Pet.aggregate([pipeline[0], pipeline[1], pipeline[2]]);
+        console.log(`Unwound breed predictions for ${result.length} pets.`);
+
+        console.log('Checking for matching breeds...');
+        result = await Pet.aggregate([pipeline[0], pipeline[1], pipeline[2], pipeline[3]]);
+        console.log(`Filtered to ${result.length} pets with at least one matching breed.`);
+
+        console.log('Projecting final fields...');
+        result = await Pet.aggregate([pipeline[0], pipeline[1], pipeline[2], pipeline[3], pipeline[4]]);
+        console.log(`Projection complete. Final number of matching pets: ${result.length}.`);
+
+        return result;
 
     } catch (error) {
         console.error('Error finding matching lost pets:', error);
         throw error;
     }
 }
+
 
 
 

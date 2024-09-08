@@ -1,13 +1,12 @@
 const mongoose = require('mongoose');
 const Pet = require('../models/pets'); // Adjust the path to your Pet model
 const dotenv = require('dotenv');
-const mongoURI = process.env.MONGO_URI;
 
 
 async function findNearbyPets(petId) {
     try {
         // Connect to MongoDB
-        await mongoose.connect(mongoURI, {
+        await mongoose.connect(, {
             useNewUrlParser: true,
             useUnifiedTopology: true
         });
@@ -56,5 +55,5 @@ async function findNearbyPets(petId) {
 }
 
 // Replace 'YOUR_PET_ID_HERE' with the actual pet ID you want to test with
-const petId = '66dc476a738221be490540a1';
+const petId = '66ddefdc080f5f1447eed144';
 findNearbyPets(petId);
