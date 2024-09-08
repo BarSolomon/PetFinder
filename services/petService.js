@@ -1,5 +1,8 @@
 const mongoose = require('mongoose');
 const Pet = require('../models/pets');
+const PossibleMatch = require('../models/possibleMatch'); // Adjust the path if necessary
+
+
 
 /**
  * Find nearby pets based on the given pet's location and optional filters.
@@ -43,9 +46,10 @@ async function findMatchingLostPets(petId, filters = {}) {
         }
 
         // Ensure the pet is marked as lost
+        /*
         if (!pet.isLost) {
             return { message: 'The pet is not marked as lost.' };
-        }
+        }*/
 
         // Ensure the pet has a valid location
         if (!pet.location || !pet.location.coordinates) {
@@ -67,7 +71,7 @@ async function findMatchingLostPets(petId, filters = {}) {
                     maxDistance: 50 * 1000,  // 50 km in meters
                     spherical: true,
                     query: {
-                        _id: { $ne: mongoose.Types.ObjectId(petId) }, // Exclude the pet itself
+                        _id: { $ne: new mongoose.Types.ObjectId(petId) }, // Exclude the pet itself
                         isLost: true,  // Only lost pets
                         ...filters    // Apply any additional filters
                     }
@@ -125,7 +129,48 @@ async function findMatchingLostPets(petId, filters = {}) {
     }
 }
 
+
+
+
+
+
+/**
+ * Function to store possible matches for a given pet
+ * @param {String} petId - The ID of the pet for which to store matches
+ * @param {Array} matchedPetIds - An array of pet IDs that are considered matches
+ * @returns {Object} - Returns the stored possible match document
+ */
+async function storePetMatches(petId, matchedPetIds) {
+    try {
+        // Convert petId to ObjectId if it's a string
+        const objectId = new mongoose.Types.ObjectId(petId);
+
+        // Check if a PossibleMatch document already exists for the given petId
+        let possibleMatch = await PossibleMatch.findOne({ petId: objectId });
+
+        if (possibleMatch) {
+            // If it exists, update the matches array
+            possibleMatch.matches = matchedPetIds;
+        } else {
+            // If it does not exist, create a new PossibleMatch document
+            possibleMatch = new PossibleMatch({
+                petId: objectId,
+                matches: matchedPetIds
+            });
+        }
+
+        // Save the document to the database
+        const savedMatch = await possibleMatch.save(); // Correct instance is being saved here
+        console.log(`Stored possible matches for pet ID ${petId}:`, matchedPetIds);
+
+        return savedMatch;
+    } catch (error) {
+        console.error('Error storing possible pet matches:', error);
+        throw error;
+    }
+}
+
 module.exports = {
-    findMatchingLostPets, findNearbyPets
+    findMatchingLostPets, findNearbyPets, storePetMatches
 };
 

@@ -1,6 +1,6 @@
 const express = require('express');
 const { getBreedPrediction } = require('../controllers/petController');
-const { getPetData , classifyPetBreeds, createPet, updatePet, deletePet, getLostPets, updateLostStatus, getPetsByUserId } = require('../controllers/petController');
+const { getPetData , classifyPetBreeds, createPet, updatePet, deletePet, getLostPets, updateLostStatus, getPetsByUserId, findMatch } = require('../controllers/petController');
 const router = express.Router();
 
 router.post('/new', createPet);
@@ -13,6 +13,7 @@ router.get('/getPetData',getPetData);
 //Ai secection
 router.post('/classify/:petId', classifyPetBreeds);
 router.get('/breed-prediction', getBreedPrediction);
+router.post('/findMatch/:petId', findMatch);
 
 
 module.exports = router;

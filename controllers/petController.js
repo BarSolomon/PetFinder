@@ -7,31 +7,42 @@ const Photo = require('../models/photo');
 const GPTInteraction = require('../models/gptInteraction');
 const { deleteFile } = require('../services/googleCloudStorage');
 const { getCoordinates } = require('../services/geolocationService');
+const PossibleMatch = require('../models/possibleMatch');  // Assuming a new model for storing possible matches
+const { findMatchingLostPets, findNearbyPets, storePetMatches } = require('../services/petService');
+const { analyzePhoto } = require('../services/gptService');
+
+
 
 
 
 const createPet = async (req, res) => {
     try {
-        const { name, age, breed, type, gender, description, city, fullAddress, ownerEmail } = req.body;
+        const { name, age, breed, type, gender, description, city, fullAddress, ownerEmail, isPetMine = true, latitude, longitude } = req.body;  // Include latitude and longitude
 
         const owner = await User.findOne({ email: ownerEmail });
         if (!owner) {
             return res.status(404).json({ error: 'Owner not found' });
         }
 
-        // Fetch coordinates for the full address
-        const coords = await getCoordinates(fullAddress);
+        let coordinates;
 
-        console.log('Fetched coordinates:', coords);
+        if (latitude !== undefined && longitude !== undefined) {
+            // Use provided coordinates
+            coordinates = [longitude, latitude];  // Ensure correct order: [longitude, latitude]
+            console.log('Using provided coordinates:', coordinates);
+        } else {
+            // Fetch coordinates for the full address
+            const coords = await getCoordinates(fullAddress);
+            console.log('Fetched coordinates:', coords);
 
-        // Ensure correct order: [longitude, latitude]
-        const coordinates = coords && coords.longitude !== undefined && coords.latitude !== undefined
-            ? [coords.longitude, coords.latitude] // Correct order
-            : null;
+            // Ensure correct order: [longitude, latitude]
+            coordinates = coords && coords.longitude !== undefined && coords.latitude !== undefined
+                ? [coords.longitude, coords.latitude]
+                : null;
 
-        if (!coordinates) {
-            return res.status(400).json({ error: 'Invalid address or unable to fetch coordinates.' });
-
+            if (!coordinates) {
+                return res.status(400).json({ error: 'Invalid address or unable to fetch coordinates.' });
+            }
         }
 
         const pet = new Pet({
@@ -47,7 +58,8 @@ const createPet = async (req, res) => {
                 type: 'Point',
                 coordinates
             },
-            owner: owner._id
+            owner: owner._id,
+            isPetMine  // Set the isPetMine field; defaults to true if not provided
         });
 
         await pet.save();
@@ -60,6 +72,7 @@ const createPet = async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+
 
 const getPetData = async(req, res) =>{
     console.log(req.body);
@@ -133,9 +146,6 @@ const updatePet = async (req, res) => {
     }
 };
 
-
-
-
 const deletePet = async (req, res) => {
     const { petId, ownerId } = req.body;
 
@@ -204,9 +214,6 @@ const deletePet = async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
-
-
-
 const getLostPets = async (req, res) => {
     try {
         const lostPets = await Pet.findLostPets();
@@ -216,7 +223,6 @@ const getLostPets = async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
-
 const updateLostStatus = async (req, res) => {
     try {
         const { petId } = req.params;
@@ -245,7 +251,6 @@ const getPetsByUserId = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-
 const classifyPetBreeds = async (req, res) => {
     const { petId } = req.params;
 
@@ -260,8 +265,6 @@ const classifyPetBreeds = async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
-
-
 const getBreedPrediction = async (req, res) => {
     const { petId, breedPredictionId } = req.query;
 
@@ -295,15 +298,151 @@ const getBreedPrediction = async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+const findMatch = async (req, res) => {
+    const { petId } = req.params;
 
+    try {
+        console.log(`Starting match process for pet ID: ${petId}`);
+
+        // Step 1: Retrieve the pet by ID and check if it has photos
+        console.log(`Retrieving pet information for ID: ${petId}`);
+        const pet = await Pet.findById(petId).populate('photos');
+        if (!pet) {
+            console.log(`Pet not found for ID: ${petId}`);
+            return res.status(404).json({ error: 'Pet not found' });
+        }
+        console.log(`Pet found: ${pet.name} (ID: ${petId}) with ${pet.photos.length} photo(s)`);
+
+        if (!pet.photos || pet.photos.length === 0) {
+            console.log(`No photos available for pet ID: ${petId}`);
+            return res.status(400).json({ error: 'No photos available for this pet.' });
+        }
+
+        // Step 2: Classify and store breed predictions
+        console.log(`Classifying breeds for pet ID: ${petId}`);
+        const breedPrediction = await classifyAndStoreBreeds(petId);
+        console.log(`Breed predictions stored for pet ID: ${petId}:`, breedPrediction.predictions);
+
+        // Step 3: Analyze pet data using GPT
+        console.log(`Formatting breed predictions for GPT prompt for pet ID: ${petId}`);
+        const formattedBreedPredictions = breedPrediction.predictions
+            .map(prediction => `${prediction.breed} (confidence: ${prediction.confidence * 100}%)`)
+            .join(', ');
+
+        const prompt = `
+                        You are provided with a pet photo and a list of breed predictions. Analyze the pet photo and use the breed predictions as a reference to fill in the pet schema JSON with the following details. Only provide fields that can be determined from the photo or the breed predictions:
+                        
+                        1. type: Either "Dog" or "Cat".
+                        2. age: An approximate age from 0 to 20.
+                        3. gender: Either "Female" or "Male".
+                        4. breed: Choose from the breed predictions provided or identify from the photo.
+                        5. description: A brief description of the pet's appearance or any distinctive features.
+                        
+                        Please provide the response in the following JSON format:
+                        
+                        {
+                          "type": "Dog",
+                          "age": 5,
+                          "gender": "Male",
+                          "breed": "Labrador",
+                          "description": "Medium-sized with a shiny black coat and friendly demeanor."
+                        }
+                        
+                        List of breed predictions: ${formattedBreedPredictions}
+                        
+                        Analyze the pet photo and provide the best possible response based on the given criteria.
+                                `;
+
+        const analysisResults = [];
+        console.log(`Starting GPT analysis for pet ID: ${petId}`);
+
+        // Step 3.2: Use the analyzePhoto function for each photo
+        for (const photo of pet.photos) {
+            console.log(`Analyzing photo ID: ${photo._id} for pet ID: ${petId}`);
+            const analysis = await analyzePhoto(photo.filename, prompt);
+            console.log(`Analysis result for photo ID: ${photo._id}:`, analysis);
+            const cleanedAnalysis = analysis.replace(/```json|```/g, '').trim();
+
+            // Store the GPT interaction
+            const gptInteraction = new GPTInteraction({
+                petId,
+                photoId: photo._id,
+                prompt,
+                response: analysis
+            });
+            await gptInteraction.save();
+            console.log(`Stored GPT interaction for photo ID: ${photo._id} in pet ID: ${petId}`);
+            const gptResponse = JSON.parse(cleanedAnalysis); // Parse cleaned response
+
+            // Update pet schema fields based on GPT response
+            if (gptResponse.type) pet.type = gptResponse.type;
+            if (gptResponse.age) pet.age = gptResponse.age;
+            if (gptResponse.gender) pet.gender = gptResponse.gender;
+            if (gptResponse.breed) pet.breed = gptResponse.breed;
+            if (gptResponse.description) pet.description = gptResponse.description;
+            analysisResults.push(gptResponse);
+        }
+
+        await pet.save();
+        console.log(`Pet schema updated based on GPT response for pet ID: ${petId}`);
+
+        // Step 4: Find nearby pets and store matches
+        console.log(`Finding nearby pets for pet ID: ${petId}`);
+        const nearbyPets = await findMatchingLostPets(petId, { isLost: true, breed: pet.breed });
+        console.log(`Found ${nearbyPets.length} nearby pets matching criteria for pet ID: ${petId}`);
+
+        await storePetMatches(petId, nearbyPets);
+        console.log(`Stored matches for pet ID: ${petId}`);
+
+        // Step 4.3: Extract owner details for matched pets
+        console.log(`Retrieving owner details for matched pets for pet ID: ${petId}`);
+        const matchedPetDetails = await Promise.all(
+            nearbyPets.map(async (matchedPetId) => {
+                const matchedPet = await Pet.findById(matchedPetId).populate('owner');
+
+                // Extract only necessary fields from owner
+                const ownerDetails = {
+                    name: `${matchedPet.owner.firstName} ${matchedPet.owner.lastName}`,
+                    phone: matchedPet.owner.phone,
+                    email: matchedPet.owner.email
+                };
+
+                // Return matched pet details with minimal owner information
+                return {
+                    pet: {
+                        _id: matchedPet._id,
+                        name: matchedPet.name,
+                        age: matchedPet.age,
+                        breed: matchedPet.breed,
+                        type: matchedPet.type,
+                        gender: matchedPet.gender,
+                        description: matchedPet.description,
+                        isLost: matchedPet.isLost,
+                        city: matchedPet.city,
+                        location: matchedPet.location,
+                        photos: matchedPet.photos,
+                        features: matchedPet.features,
+                        isPetMine: matchedPet.isPetMine,
+                        breeds_predictions: matchedPet.breeds_predictions,
+                    },
+                    owner: ownerDetails
+                };
+            })
+        );
+
+        console.log(`Match analysis complete for pet ID: ${petId}`);
+        res.status(200).json({ message: 'Match analysis complete.', matches: matchedPetDetails });
+    } catch (error) {
+        console.error('Error finding match:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
 module.exports = {
     createPet,
     updatePet,
     deletePet,
-    getLostPets,
-    updateLostStatus,
-    getPetsByUserId,
-    classifyPetBreeds,
-    getPetData,
-    getBreedPrediction
+    getLostPets, updateLostStatus,
+    getPetsByUserId, classifyPetBreeds,
+    getPetData, getBreedPrediction, findMatch
+
 };

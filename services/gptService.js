@@ -23,7 +23,7 @@ async function analyzePhoto(filename, prompt) {
                     ]
                 }
             ],
-            max_tokens: 500,
+            max_tokens: 2000,
         });
 
         return response.choices[0].message.content.trim();

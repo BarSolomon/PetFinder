@@ -11,24 +11,24 @@ const mongoose = require('mongoose');
 const PetSchema = new mongoose.Schema({
     name: {
         type: String,
-        required: true
+        required: false
     },
     age: {
         type: Number,
-        required: true
+        required: false
     },
     breed: {
         type: String,
-        required: true
+        required: false
     },
     type: {
         type: String,
-        required: true,
+        required: false,
         enum: ['Dog', 'Cat', 'Other']
     },
     gender: {
         type: String,
-        required: true,
+        required: false,
         enum: ['Male', 'Female']
     },
     description: {
@@ -40,7 +40,7 @@ const PetSchema = new mongoose.Schema({
     },
     city: {
         type: String,
-        required: true
+        required: false
     },
     owner: {
         type: mongoose.Schema.Types.ObjectId,
@@ -77,6 +77,10 @@ const PetSchema = new mongoose.Schema({
             type: [Number], // [longitude, latitude]
             index: '2dsphere' // Enables geospatial queries
         }
+    },
+    isPetMine: {
+        type: Boolean,
+        default: true
     }
 
 });
