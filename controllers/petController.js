@@ -478,12 +478,45 @@ const cleanJsonResponse = (response) => {
         return null;  // Return null or handle the error as needed
     }
 };
+const getPetCoordinates = async (req, res) => {
+    const { petId } = req.params;  // Extract pet ID from the request parameters
+
+    try {
+        console.log(`Starting coordinate retrieval process for pet ID: ${petId}`);
+
+        // Step 1: Retrieve the pet by ID and check if it has coordinates
+        console.log(`Retrieving pet information for ID: ${petId}`);
+        const pet = await Pet.findById(petId).select('location');
+
+        if (!pet) {
+            console.log(`Pet not found for ID: ${petId}`);
+            return res.status(404).json({ error: 'Pet not found' });
+        }
+
+        console.log(`Pet found for ID: ${petId}`);
+
+        if (!pet.location || !pet.location.coordinates) {
+            console.log(`No coordinates available for pet ID: ${petId}`);
+            return res.status(404).json({ error: 'Coordinates not available for this pet.' });
+        }
+
+        // Step 2: Return the pet's coordinates
+        console.log(`Returning coordinates for pet ID: ${petId}`, pet.location.coordinates);
+        res.status(200).json({ coordinates: pet.location.coordinates });
+
+        console.log(`Coordinates retrieval process complete for pet ID: ${petId}`);
+    } catch (error) {
+        console.error('Error fetching pet coordinates:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
 module.exports = {
     createPet,
     updatePet,
     deletePet,
     getLostPets, updateLostStatus,
     getPetsByUserId, classifyPetBreeds,
-    getPetData, getBreedPrediction, findMatch
+    getPetData, getBreedPrediction, findMatch , getPetCoordinates
 
 };
